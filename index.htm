@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1" />
+    <link rel="shortcut icon" href="#"/>
+    <title>Todoist </title>
+   
+    <script src="https://cdn.tailwindcss.com"></script>
+       
+<body>
+    <style>
+        body{}
+        #app{width:100%;max-width:600px;margin:0 auto;padding:20px;position:relative;border:10px solid #3fb27f;border-radius:5px;}
+        #app::after{content:"vue app esm";width:150px;height:30px;background:#3fb27f;text-align:center;font-weight:900;color:#fff;position:absolute;right:-10px;
+        top:-30px;border-radius:5px;}
+        
+        ul li{margin-bottom: 10px;}
+        h3{ font-family:'Noto Sans TC','微軟正黑體';  font-size:1.6rem; font-weight:900; color:#333;text-align: center; margin-bottom:40px;}
+    
+        /*刪除線*/
+        .checked{ text-decoration:line-through;}
+        /*新增一筆 輸入*/    
+        input::placeholder{ letter-spacing:0.2em;}   
+        /* 隱藏原始的 checkbox */
+        input[type="checkbox"]{ display:none; }
+        /* 創建一個新的 checkbox */
+        input[type="checkbox"] + label{ position:relative; padding-left:35px; cursor:pointer; color:#666; }
+        /* 新的 checkbox 的外觀 */
+        input[type="checkbox"] + label:before{ content:""; position:absolute; left:0; top:6px; width:20px; height:20px; border:2px solid #ddd; border-radius:3px; background-color:#f0f0f0; }
+        /* 當 checkbox 被選中時的外觀 */
+        input[type="checkbox"]:checked + label:before{ content:"\2713"; text-align:center; line-height:18px; color:#fff; background-color:#666; }
+        /* 輸入文字框*/    
+        input[type="text"]{padding: 0 5px;}
+        /*底線*/
+        li{border-bottom: 1px solid #c9c9c9; padding-bottom: 10px;}
+        
+        /*清單列表背景色*/
+        .box_work{background: #f6f7f9;}  
+        /*狀態tab*/
+        .tab button{ padding:10px 0px; transition:all 0.3s;}
+    
+        </style>
+    <h3>vue3 新增 讀取 更新 刪除 CRUD / tailwindcss </h3>
+    <p></p>    
+    <!--應用程式 開始-->
+    <div id="app">
+
+        <h1 class="text-3xl font-bold underline mb-4">
+            Hello world! 
+        </h1>
+        <p class="pb-3">今天是 {{new Date().getFullYear()}} 年 {{new Date().getMonth() + 1}}月 {{new Date().getDate() + 1}}日</p>
+
+        <!--新增一筆 開始-->
+        <div class="enterTodos flex">
+            <input class="w-96 shadow p-2 rounded mr-4" type="text" v-model="newOneTitle" @keyup.enter="fnAdd" placeholder="有什麼計畫?"/>
+            <button @click="fnAdd" class="shadow  rounded-lg bg-blue-500 px-2 py-2 text-base  font-medium text-white hover:bg-blue-700">新增</button>
+        </div>
+        <!--新增一筆 結束-->
+        
+        <!-- 狀態切換 開始-->
+        <div class="tab grid grid-cols-3 gap-4 font-bold mt-4 border-gray-700 shadow-md" >
+            <button :class="currentFilter === 'all' ? 'bg-sky-900 text-white' : 'text-gray-500' " @click="filterTasks('all')">
+                全部({{getTotalItemCount}})</button>
+            <button :class="currentFilter === 'incomplete' ? 'bg-sky-900 text-white' : 'text-gray-500' " @click="filterTasks('incomplete')">
+                未完成({{getUndoneItemCount}})</button>
+            <button :class="currentFilter === 'complete' ? 'bg-sky-900 text-white' : 'text-gray-500' " @click="filterTasks('complete')">
+                已完成({{getDoneItemCount}})</button>
+        </div>
+        <!-- 狀態切換 結束-->
+
+        <!--工作清單 開始-->
+        <div class="box_work">
+          
+            <ul class="p-4 shadow-md">
+                <li class="flex " v-for="item in filteredList" :key="item.id"> 
+                    <!-- 勾選按紐 -->
+                    <input type="checkbox" :id="item.id" :checked="item.bDone" :class="{'checked': item.bDone }" 
+                    @change="fnUpdate(item.id)"/>
+
+                    <!-- 當 editId 等於當前項目的 id 時，顯示輸入框(編輯) -->
+                    <input class="flex-auto w-1/4 shadow rounded " v-if="editId === item.id " v-model="editTitle" type="text">
+
+                    <!-- 當 editId 不等於當前項目的 id 時，顯示標籤 -->
+                    <label class="flex-auto w-2/4 text-xl flex items-center" :for="item.id" v-else-if="editId !== item.id" :for="item.id" >
+                        <p class="text-sm">{{ new Date(item.id).toLocaleDateString()}} </p>&nbsp;&nbsp;<h2 class="text-justify tracking-wider text-slate-900 " :class="{checked:item.bDone}">{{ item.title}}</h2>
+                    </label>
+                    
+                    <!-- 編輯 開始-->
+                    <button class="bg-red-400 hover:bg-red-600 text-sm text-white font-bold py-2 px-4 rounded ml-4" @click="fnEdit(item.id,item.title)">編 輯</button>
+                    <!-- 編輯 結束-->
+                    <!-- 完成 開始-->
+                    <button class="bg-orange-400 hover:bg-orange-700 text-sm text-white font-bold py-2 px-4 rounded ml-4" v-if="editId === item.id" @click="updateTitle(item,editTitle)">完 成</button>
+                    <!-- 完成 結束-->
+                    <!-- 清除 開始-->
+                   <button class="bg-slate-400 hover:bg-slate-500 text-sm text-white font-bold py-2 px-4 rounded ml-4" @click="fnDel">清 除</button>
+                    <!-- 清除 結束-->
+                </li>
+               
+            </ul>
+        </div>
+        <!--工作清單 結束-->
+
+        <!-- <p class="mb-2">■ 原始資料 ========================</p>
+        <ul class="">
+            <li v-for="item in filteredList" :key="item.id"> 
+                <input v-if="editId === item.id" type="text">
+                 {{ new Date(item.id).toLocaleString()}} - {{ item.title}} 
+            </li>
+        </ul> -->
+
+    </div>
+    <!--應用程式 結束-->
+    
+    <script type="module">
+        import { createApp, ref, reactive, onMounted, computed, nextTick} from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+    
+        const app = createApp({
+            setup() {
+                //原始資料
+                const toDoList = ref([
+                    {id:1688612920443, title:"吃飯", bDone:false},
+					{id:1688612947784, title:"睡覺", bDone:false},
+					{id:1688612955522, title:"打東東", bDone:false}
+                ]);
+                
+                //新增一筆
+                const newOneTitle = ref('');
+                //編輯按鈕
+                const editId = ref(''); 
+                //編輯後 更新文字
+                const editTitle = ref('');
+                //filteredList 狀態切換
+                let filteredList = ref(toDoList.value);
+                //當前是全部狀態
+                const currentFilter = ref('all');
+
+                //filterTasks 狀態切換
+                const filterTasks = (status) => {
+                    //文字狀態上色
+                    currentFilter.value = status;
+                    //全部
+                    if(status === 'all'){
+                        filteredList.value = toDoList.value;
+                    //未完成
+                    }else if(status === 'incomplete'){
+                        filteredList.value  = toDoList.value.filter(item => !item.bDone)
+                    //已完成
+                    }else if(status === 'complete'){
+                        filteredList.value  = toDoList.value.filter(item =>  item.bDone)
+                    }
+                }
+
+                //新增一筆
+                const fnAdd = () => {
+                    if(newOneTitle.value.trim() === ''){
+                        alert('請輸入待辦事項');
+                        return;
+                    }
+                    toDoList.value.push({id:Date.now(), title:newOneTitle.value, bDone:false});
+                    newOneTitle.value = '';
+                }
+
+                //清單總數
+                const getTotalItemCount = computed(()=>toDoList.value.length);    
+                //清單未完成
+                const  getUndoneItemCount = computed(()=>toDoList.value.filter(item=>!item.bDone).length)
+                //清單已完成
+                const getDoneItemCount = computed(()=>toDoList.value.filter(item=>item.bDone).length)
+
+
+                //更新一筆  
+                const fnUpdate = (id) =>{
+                    const itemToUpdate = toDoList.value.find(item=>item.id===id);
+                    itemToUpdate.bDone = !itemToUpdate.bDone;                
+                }
+                //更新完成  
+                const updateTitle = (item, newTitle) => {
+                    item.title = newTitle;
+                    editId.value = null; //取消輸入狀態
+                };
+
+                //修改一筆 || 需要兩筆資料 id, title 去接收
+                const fnEdit = (id, title) => {
+                   editId.value = id;
+                    editTitle.value = title;
+                };
+
+                //刪除
+                const fnDel = (argItem) => {
+                    toDoList.value.splice(toDoList.value.indexOf(argItem), 1);
+				}
+                
+                return{ toDoList,fnAdd,newOneTitle,
+                    fnUpdate,updateTitle,fnEdit,
+                    filterTasks,filteredList,
+                    editId,editTitle,currentFilter,
+                    fnDel,
+                    getTotalItemCount,getUndoneItemCount,getDoneItemCount
+                    
+                }; 
+            }
+        });
+        
+      
+    
+        app.mount('#app');
+    </script>
+</body>
+</html>
